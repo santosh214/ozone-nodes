@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/Login';
-import Layout from './components/Layout';
 import NodeSyncInfo from './components/NodeSyncInfo';
+import PeerCountInfo from './components/PeerCountInfo';
+import Layout from './components/Layout';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,16 +52,8 @@ function App() {
           />
 
           {/* Protected Routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <NodeSyncInfo />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<ProtectedRoute><Layout><NodeSyncInfo /></Layout></ProtectedRoute>} />
+          <Route path="/peer-count" element={<ProtectedRoute><Layout><PeerCountInfo /></Layout></ProtectedRoute>} />
 
           {/* Catch all route - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
