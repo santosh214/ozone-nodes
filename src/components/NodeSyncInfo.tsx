@@ -147,7 +147,7 @@ const NodeSyncInfo: React.FC = () => {
           <button
             onClick={fetchSyncInfo}
             disabled={loading}
-            className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto justify-center shadow-lg transition-all duration-300"
+            className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none w-full sm:w-auto justify-center shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             {loading ? (
               <>
@@ -251,7 +251,7 @@ const NodeSyncInfo: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, IP, or node URL..."
-                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300"
+                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 hover:bg-white/70 focus:bg-white/80 cursor-text placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -291,7 +291,7 @@ const NodeSyncInfo: React.FC = () => {
               <tr>
                 <th 
                   onClick={() => handleSort('name')}
-                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-all duration-300"
+                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 hover:text-gray-900 transition-all duration-300 select-none"
                 >
                   <div className="flex items-center">
                     Name
@@ -373,7 +373,7 @@ const NodeSyncInfo: React.FC = () => {
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                       <button
                         onClick={() => setSelectedNode(node)}
-                        className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50/50 px-2 py-1 rounded-lg transition-all duration-300"
+                        className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50/50 px-2 py-1 rounded-lg transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] cursor-pointer font-medium"
                       >
                         View Details
                       </button>
@@ -392,7 +392,7 @@ const NodeSyncInfo: React.FC = () => {
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-xl text-gray-700 bg-white/50 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-xl text-gray-700 bg-white/50 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 Previous
               </button>
@@ -439,7 +439,7 @@ const NodeSyncInfo: React.FC = () => {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`relative inline-flex items-center px-3 py-2 border text-xs sm:text-sm font-medium transition-all duration-300 ${
+                        className={`relative inline-flex items-center px-3 py-2 border text-xs sm:text-sm font-medium transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                           currentPage === pageNum
                             ? 'z-10 bg-gradient-to-r from-blue-500 to-indigo-600 border-indigo-500 text-white shadow-lg'
                             : 'bg-white/50 border-gray-300 text-gray-500 hover:bg-gray-50'
@@ -452,7 +452,7 @@ const NodeSyncInfo: React.FC = () => {
                   <button
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-xl border border-gray-300 bg-white/50 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-xl border border-gray-300 bg-white/50 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   >
                     Next
                   </button>
@@ -478,7 +478,7 @@ const NodeSyncInfo: React.FC = () => {
               <h3 className="text-base sm:text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent pr-2">Node Details: {selectedNode.name}</h3>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1 rounded-lg hover:bg-gray-100/50 transition-all duration-300"
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-2 rounded-lg hover:bg-gray-100/50 transition-all duration-300 hover:scale-[1.1] active:scale-[0.95] cursor-pointer"
               >
                 <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -588,7 +588,7 @@ const NodeSyncInfo: React.FC = () => {
             <div className="mt-4 sm:mt-6 flex justify-end">
               <button
                 onClick={() => setSelectedNode(null)}
-                className="px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl shadow-lg hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base transition-all duration-300"
+                className="px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl shadow-lg hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 Close
               </button>
