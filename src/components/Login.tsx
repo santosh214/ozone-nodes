@@ -139,7 +139,7 @@ const Login: React.FC = () => {
                   name="username"
                   type="text"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors hover:border-indigo-400 focus:ring-indigo-600 cursor-text placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Enter your username"
                   value={formData.username}
                   onChange={handleInputChange}
@@ -162,7 +162,7 @@ const Login: React.FC = () => {
                   name="password"
                   type="password"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors hover:border-indigo-400 focus:ring-indigo-600 cursor-text placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleInputChange}
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 {isLoading ? (
                   <>

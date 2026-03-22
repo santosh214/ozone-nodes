@@ -1,61 +1,78 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiClient } from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
-import type { SyncInfo, NodeInfo } from '../types/node';
 
-const NodeSyncInfo: React.FC = () => {
+interface PeerNode {
+  name: string;
+  ip: string;
+  node: string;
+  online: boolean;
+  peerCount: number;
+}
+
+interface PeerCountData {
+  checkedAt: string;
+  totalNodes: number;
+  onlineNodes: number;
+  offlineNodes: number;
+  totalPeers: number;
+  results: PeerNode[];
+}
+
+const PeerCountInfo: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [syncData, setSyncData] = useState<SyncInfo | null>(null);
+  const [peerData, setPeerData] = useState<PeerCountData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
-  const [sortField, setSortField] = useState<keyof NodeInfo>('name');
+  const [sortField, setSortField] = useState<keyof PeerNode>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [selectedNode, setSelectedNode] = useState<NodeInfo | null>(null);
+  const [selectedNode, setSelectedNode] = useState<PeerNode | null>(null);
 
-  const fetchSyncInfo = async () => {
+  // Fetch peer count data
+  const fetchPeerCountData = async () => {
     if (!isAuthenticated) return;
     
     setLoading(true);
     setError('');
-
+    
     try {
-      const response = await apiClient.get<SyncInfo>('/nodes/sync-info');
-      
+      const response = await apiClient.get<PeerCountData>('/nodes/peer-count');
       if (response.success && response.data) {
-        setSyncData(response.data);
+        setPeerData(response.data);
       } else {
-        setError('Failed to fetch node sync information');
+        setError('Failed to fetch peer count data');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching peer count data');
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!isAuthenticated || !peerData) return;
+
+    const interval = setInterval(fetchPeerCountData, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, peerData]);
+
+  // Initial data fetch
   useEffect(() => {
     if (isAuthenticated) {
-      fetchSyncInfo();
+      fetchPeerCountData();
     }
   }, [isAuthenticated]);
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    if (!isAuthenticated || !syncData) return;
-
-    const interval = setInterval(fetchSyncInfo, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, syncData]);
-
   // Filter and sort nodes
-  const filteredAndSortedNodes = useMemo(() => {
-    if (!syncData) return [];
+  const filteredAndSortedNodes = React.useMemo(() => {
+    if (!peerData) return [];
 
-    let filtered = syncData.results.filter(node => {
+    let filtered = peerData.results.filter(node => {
       const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            node.ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            node.node.toLowerCase().includes(searchTerm.toLowerCase());
@@ -72,12 +89,13 @@ const NodeSyncInfo: React.FC = () => {
       let aValue = a[sortField];
       let bValue = b[sortField];
       
-      if (aValue === null || aValue === undefined) return 1;
-      if (bValue === null || bValue === undefined) return -1;
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
       }
       
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -86,7 +104,7 @@ const NodeSyncInfo: React.FC = () => {
     });
 
     return filtered;
-  }, [syncData, searchTerm, statusFilter, sortField, sortDirection]);
+  }, [peerData, searchTerm, statusFilter, sortField, sortDirection]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedNodes.length / itemsPerPage);
@@ -95,7 +113,8 @@ const NodeSyncInfo: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: keyof NodeInfo) => {
+  // Handle sort
+  const handleSort = (field: keyof PeerNode) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -104,35 +123,36 @@ const NodeSyncInfo: React.FC = () => {
     }
   };
 
+  // Format date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
 
-  const getStatusBadge = (online: boolean) => (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-      online 
-        ? 'bg-green-100 text-green-800' 
-        : 'bg-red-100 text-red-800'
-    }`}>
-      <span className={`w-2 h-2 mr-1.5 rounded-full ${
-        online ? 'bg-green-400' : 'bg-red-400'
-      }`}></span>
-      {online ? 'Online' : 'Offline'}
-    </span>
-  );
+  // Get status badge
+  const getStatusBadge = (online: boolean) => {
+    if (online) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100/80 text-green-800 border border-green-200/50">
+          <svg className="w-2 h-2 mr-1" fill="currentColor" viewBox="0 0 8 8">
+            <circle cx="4" cy="4" r="3"></circle>
+          </svg>
+          Online
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100/80 text-red-800 border border-red-200/50">
+          <svg className="w-2 h-2 mr-1" fill="currentColor" viewBox="0 0 8 8">
+            <circle cx="4" cy="4" r="3"></circle>
+          </svg>
+          Offline
+        </span>
+      );
+    }
+  };
 
   if (!isAuthenticated) {
-    return (
-      <div className="p-8 text-center">
-        <div className="max-w-md mx-auto">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-          </svg>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Authentication Required</h3>
-          <p className="mt-2 text-sm text-gray-500">Please login to view node sync information.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -141,11 +161,11 @@ const NodeSyncInfo: React.FC = () => {
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent">Node Sync Information</h1>
-            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Real-time status of all Ozone network nodes</p>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent">Peer Count Information</h1>
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Real-time peer connections across all Ozone network nodes</p>
           </div>
           <button
-            onClick={fetchSyncInfo}
+            onClick={fetchPeerCountData}
             disabled={loading}
             className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none w-full sm:w-auto justify-center shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
@@ -159,7 +179,7 @@ const NodeSyncInfo: React.FC = () => {
               </>
             ) : (
               <>
-                <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
                 Refresh
@@ -169,8 +189,8 @@ const NodeSyncInfo: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        {syncData && (
-          <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {peerData && (
+          <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-200/50">
               <div className="p-4 sm:p-5">
                 <div className="flex items-center">
@@ -184,7 +204,7 @@ const NodeSyncInfo: React.FC = () => {
                   <div className="ml-3 sm:ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Nodes</dt>
-                      <dd className="text-lg sm:text-xl font-bold text-gray-900">{syncData.totalNodes}</dd>
+                      <dd className="text-lg sm:text-xl font-bold text-gray-900">{peerData.totalNodes}</dd>
                     </dl>
                   </div>
                 </div>
@@ -204,7 +224,7 @@ const NodeSyncInfo: React.FC = () => {
                   <div className="ml-3 sm:ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Online Nodes</dt>
-                      <dd className="text-lg sm:text-xl font-bold text-green-600">{syncData.onlineNodes}</dd>
+                      <dd className="text-lg sm:text-xl font-bold text-green-600">{peerData.onlineNodes}</dd>
                     </dl>
                   </div>
                 </div>
@@ -224,7 +244,27 @@ const NodeSyncInfo: React.FC = () => {
                   <div className="ml-3 sm:ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Offline Nodes</dt>
-                      <dd className="text-lg sm:text-xl font-bold text-red-600">{syncData.offlineNodes}</dd>
+                      <dd className="text-lg sm:text-xl font-bold text-red-600">{peerData.offlineNodes}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-200/50">
+              <div className="p-4 sm:p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-3 sm:ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Peers</dt>
+                      <dd className="text-lg sm:text-xl font-bold text-purple-600">{peerData.totalPeers}</dd>
                     </dl>
                   </div>
                 </div>
@@ -261,7 +301,7 @@ const NodeSyncInfo: React.FC = () => {
               id="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'online' | 'offline')}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 hover:bg-white/70 focus:bg-white/80 cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNCA2bDQgMCAxLjQxNCAxLjQxNCAwIDAgMS40MTQgMCAwLjQxNEwtMS40MTQtMS40MTR6TTggMTBMOCAxMGwxLjQxNCAxLjQxNEwxLjQxNCAxLjQxNEwxLjQxNCAxLjQxNEwxLjQxNCAxLjQxNHpNMTIgNEwxMiA0bDEuNDE0IDEuNDE0TDEzLjQxNCAxLjQxNEwxLjQxNCAxLjQxNHpNMTQgMTBMMTQgMTBsMS40MTQgMS40MTRMMTUuNDE0IDEuNDE0TDE1LjQxNCAxLjQxNHpNMTYgNEwxNiA0bDEuNDE0IDEuNDE0TDE3LjQxNCAxLjQxNEwxNy40MTQgMS40MTR6IiBmaWxsPSIjNjY3MDhBIi8+PC9zdmc+')] bg-no-repeat bg-[length:16px_16px] bg-[right_8px_center] pr-8"
             >
               <option value="all">All Nodes</option>
               <option value="online">Online Only</option>
@@ -273,7 +313,7 @@ const NodeSyncInfo: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="mb-6 rounded-xl bg-red-50/80 backdrop-blur-sm border border-red-200/50 p-4">
           <div className="flex">
             <svg className="h-5 w-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -311,11 +351,8 @@ const NodeSyncInfo: React.FC = () => {
                 <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">
-                  Peers
-                </th>
-                <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">
-                  Last Checked
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Peer Count
                 </th>
                 <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Actions
@@ -325,20 +362,20 @@ const NodeSyncInfo: React.FC = () => {
             <tbody className="bg-white/50 divide-y divide-gray-200/30">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 sm:px-6 py-8 sm:py-12 text-center">
+                  <td colSpan={6} className="px-3 sm:px-6 py-8 sm:py-12 text-center">
                     <div className="flex justify-center">
                       <svg className="animate-spin h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     </div>
-                    <p className="mt-2 text-sm sm:text-base text-gray-500">Loading node data...</p>
+                    <p className="mt-2 text-sm sm:text-base text-gray-500">Loading peer count data...</p>
                   </td>
                 </tr>
               ) : paginatedNodes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 sm:px-6 py-8 sm:py-12 text-center text-gray-500">
-                    {syncData ? 'No nodes found matching your criteria.' : 'No data available.'}
+                  <td colSpan={6} className="px-3 sm:px-6 py-8 sm:py-12 text-center text-gray-500">
+                    {peerData ? 'No nodes found matching your criteria.' : 'No data available.'}
                   </td>
                 </tr>
               ) : (
@@ -360,14 +397,14 @@ const NodeSyncInfo: React.FC = () => {
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       {getStatusBadge(node.online)}
                     </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-500">
-                        {node.peerCount !== null ? node.peerCount : '-'}
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-500">
-                        {formatDate(node.checkedAt)}
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-xs sm:text-sm font-medium text-gray-900">{node.peerCount}</span>
+                        {node.peerCount > 0 && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100/80 text-purple-800 border border-purple-200/50">
+                            Active
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
@@ -399,7 +436,7 @@ const NodeSyncInfo: React.FC = () => {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-xl text-gray-700 bg-white/50 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                className="ml-3 relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-xl text-gray-700 bg-white/50 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 Next
               </button>
@@ -419,7 +456,7 @@ const NodeSyncInfo: React.FC = () => {
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-xl border border-gray-300 bg-white/50 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-xl border border-gray-300 bg-white/50 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   >
                     Previous
                   </button>
@@ -464,9 +501,9 @@ const NodeSyncInfo: React.FC = () => {
       </div>
 
       {/* Last Updated */}
-      {syncData && (
+      {peerData && (
         <div className="mt-4 text-center text-sm text-gray-500">
-          Last updated: {formatDate(syncData.checkedAt)} • Auto-refresh every 30 seconds
+          Last updated: {formatDate(peerData.checkedAt)} • Auto-refresh every 30 seconds
         </div>
       )}
 
@@ -508,81 +545,46 @@ const NodeSyncInfo: React.FC = () => {
                     <dt className="text-xs sm:text-sm font-medium text-gray-500">Status:</dt>
                     <dd>{getStatusBadge(selectedNode.online)}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500">Peer Count:</dt>
-                    <dd className="text-xs sm:text-sm text-gray-900">
-                      {selectedNode.peerCount !== null ? selectedNode.peerCount : 'N/A'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500">Last Checked:</dt>
-                    <dd className="text-xs sm:text-sm text-gray-900">{formatDate(selectedNode.checkedAt)}</dd>
-                  </div>
                 </dl>
               </div>
 
-              {selectedNode.error && (
-                <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl p-4">
-                  <h4 className="font-bold text-red-900 mb-3 text-sm sm:text-base">Error Information</h4>
-                  <div className="bg-red-100/50 rounded-xl p-3 border border-red-200/50">
-                    <p className="text-xs sm:text-sm text-red-800 break-words">{selectedNode.error}</p>
+              <div className="bg-white/50 rounded-2xl p-4 border border-gray-200/50">
+                <h4 className="font-bold text-gray-900 mb-3 text-sm sm:text-base bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent">Peer Information</h4>
+                <dl className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500">Peer Count:</dt>
+                    <dd className="text-xs sm:text-sm text-gray-900">{selectedNode.peerCount}</dd>
                   </div>
-                </div>
-              )}
-
-              {selectedNode.syncInfo && (
-                <div className="bg-white/50 rounded-2xl p-4 border border-gray-200/50">
-                  <h4 className="font-bold text-gray-900 mb-3 text-sm sm:text-base bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent">Sync Information</h4>
-                  <dl className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Latest Block Height:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">{selectedNode.syncInfo.latestBlockHeight}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Latest Block Time:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">{formatDate(selectedNode.syncInfo.latestBlockTime)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Catching Up:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">
-                        {selectedNode.syncInfo.catchingUp ? 'Yes' : 'No'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Latest Block Hash:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900 truncate max-w-[120px]" title={selectedNode.syncInfo.latestBlockHash}>
-                        {selectedNode.syncInfo.latestBlockHash}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-
-              {selectedNode.nodeInfo && (
-                <div className="bg-white/50 rounded-2xl p-4 border border-gray-200/50">
-                  <h4 className="font-bold text-gray-900 mb-3 text-sm sm:text-base bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent">Node Information</h4>
-                  <dl className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Node ID:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900 truncate max-w-[120px]" title={selectedNode.nodeInfo.id}>
-                        {selectedNode.nodeInfo.id}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Network:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">{selectedNode.nodeInfo.network}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Moniker:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">{selectedNode.nodeInfo.moniker}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-xs sm:text-sm font-medium text-gray-500">Version:</dt>
-                      <dd className="text-xs sm:text-sm text-gray-900">{selectedNode.nodeInfo.version}</dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
+                  <div className="flex justify-between">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500">Connection Status:</dt>
+                    <dd>
+                      {selectedNode.peerCount > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100/80 text-green-800 border border-green-200/50">
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100/80 text-gray-800 border border-gray-200/50">
+                          No Connections
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500">Network Activity:</dt>
+                    <dd>
+                      {selectedNode.online && selectedNode.peerCount > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100/80 text-purple-800 border border-purple-200/50">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100/80 text-red-800 border border-red-200/50">
+                          Inactive
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </div>
 
             <div className="mt-4 sm:mt-6 flex justify-end">
@@ -600,4 +602,4 @@ const NodeSyncInfo: React.FC = () => {
   );
 };
 
-export default NodeSyncInfo;
+export default PeerCountInfo;
